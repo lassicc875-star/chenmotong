@@ -669,7 +669,9 @@
     /* 控制条内：覆盖 .music-btn 的 fixed / 独立玻璃样式，统一从容器继承 */
     .music-cluster .music-btn,
     .music-cluster .music-extra {
-      position: static;
+      position: relative;   /* 用 relative 而非 static：让播放中的呼吸光环
+                               （::before）和鼠标高光层（::after）都锚定在
+                               按钮自身，而不是整个控制条 */
       right: auto;
       bottom: auto;
       width: 40px;
@@ -754,6 +756,114 @@
       .music-cluster {
         backdrop-filter: blur(12px) saturate(160%);
         -webkit-backdrop-filter: blur(12px) saturate(160%);
+      }
+    }
+
+    /* ============================================================
+       10. 鼠标跟随光源（只照亮玻璃元素，背景完全不受影响）
+       ------------------------------------------------------------
+       · 实现方式：不给页面盖一整层光斑，而是给每个玻璃元素
+         （卡片 / 搜索框 / 分类胶囊 / 按钮 / 控制条）加一个
+         ::after 高光层，光斑画在元素内部 —— 天然被元素自身的
+         圆角和边界裁剪，背景图 / 光斑永远照不到
+       · 旧方案（mix-blend-mode + isolation 隔离层）已废弃：
+         混合模式在透明背景上会把光晕原样显示出来，
+         鼠标移到卡片之间的空白处时背景照样被照亮
+       · JS 把鼠标坐标换算成每个元素的局部坐标 --sx / --sy，
+         径向渐变中心随之移动，rAF + lerp 平滑跟随
+       · 鼠标离开视口 → body 移除 .spot-on，高光整体淡出
+       · 触摸设备 → CSS 隐藏 + JS 跳过，省性能
+       ============================================================ */
+
+    /* 这些元素本身没写定位，补上 relative 作为 ::after 高光层的
+       定位基准（.link-card 已有 relative，.music-cluster 是 fixed） */
+    .avatar-wrap,
+    .name-plate,
+    .search-box,
+    .theme-toggle,
+    .category-chip {
+      position: relative;
+    }
+
+    /* 每个玻璃元素内部的高光层
+       （径向渐变中心由 --sx / --sy 控制，默认 -999px = 光斑
+         在元素外 = 不可见；鼠标靠近才亮） */
+    .link-card::after,
+    .avatar-wrap::after,
+    .name-plate::after,
+    .search-box::after,
+    .theme-toggle::after,
+    .category-chip::after,
+    .music-cluster::after,
+    .music-cluster .music-btn::after,
+    .music-cluster .music-extra::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;    /* 跟随元素自身圆角，光斑不出界 */
+      pointer-events: none;      /* 不挡点击 */
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      background: radial-gradient(
+        circle 130px at var(--sx, -999px) var(--sy, -999px),
+        rgba(255, 255, 255, 0.32) 0%,
+        rgba(255, 255, 255, 0.12) 45%,
+        rgba(255, 255, 255, 0)   70%
+      );
+    }
+
+    /* 鼠标在页面内 → 高光淡入 */
+    body.spot-on .link-card::after,
+    body.spot-on .avatar-wrap::after,
+    body.spot-on .name-plate::after,
+    body.spot-on .search-box::after,
+    body.spot-on .theme-toggle::after,
+    body.spot-on .category-chip::after,
+    body.spot-on .music-cluster::after,
+    body.spot-on .music-cluster .music-btn::after,
+    body.spot-on .music-cluster .music-extra::after {
+      opacity: 1;
+    }
+
+    /* 暗色模式：光更柔一点，避免糊住文字 */
+    html[data-theme="dark"] .link-card::after,
+    html[data-theme="dark"] .avatar-wrap::after,
+    html[data-theme="dark"] .name-plate::after,
+    html[data-theme="dark"] .search-box::after,
+    html[data-theme="dark"] .theme-toggle::after,
+    html[data-theme="dark"] .category-chip::after,
+    html[data-theme="dark"] .music-cluster::after,
+    html[data-theme="dark"] .music-cluster .music-btn::after,
+    html[data-theme="dark"] .music-cluster .music-extra::after {
+      background: radial-gradient(
+        circle 130px at var(--sx, -999px) var(--sy, -999px),
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(190, 214, 255, 0.09) 45%,
+        rgba(255, 255, 255, 0)   70%
+      );
+    }
+
+    /* 触摸设备（无 hover）→ 直接不渲染高光层，省 GPU */
+    @media (hover: none) {
+      .link-card::after,
+      .avatar-wrap::after,
+      .name-plate::after,
+      .search-box::after,
+      .theme-toggle::after,
+      .category-chip::after,
+      .music-cluster::after,
+      .music-cluster .music-btn::after,
+      .music-cluster .music-extra::after {
+        display: none !important;
+      }
+    }
+    /* 用户开了「减少动效」→ 淡入淡出更快 */
+    @media (prefers-reduced-motion: reduce) {
+      .link-card::after, .avatar-wrap::after, .name-plate::after,
+      .search-box::after, .theme-toggle::after, .category-chip::after,
+      .music-cluster::after, .music-cluster .music-btn::after,
+      .music-cluster .music-extra::after {
+        transition: opacity 0.2s ease;
       }
     }
   </style>
@@ -1255,6 +1365,9 @@
           togglePin(btn.dataset.pin);
         });
       });
+
+      // 卡片是重新渲染出来的，鼠标聚光的高光层要重新收集
+      refreshSpotTargets();
     }
 
     function render() {
@@ -1384,6 +1497,87 @@
     });
 
     /* ==========================================================
+       鼠标跟随光源（只照亮玻璃元素，不照背景）
+       ----------------------------------------------------------
+       · 每个玻璃元素都有一个 ::after 高光层（见 CSS 第 10 节），
+         这里负责把鼠标的视口坐标换算成各元素的局部坐标，
+         写进 CSS 变量 --sx / --sy，径向渐变中心随之移动
+       · rAF + lerp 平滑跟随（系数 0.18，改这个值调灵敏度）
+       · 卡片 / 分类胶囊是动态渲染的，renderCards() 结束时会
+         调 refreshSpotTargets() 重新收集元素列表
+       · 鼠标离开视口 → body 移除 .spot-on，高光整体淡出
+       ========================================================== */
+    const SPOT_SELECTOR = [
+      ".link-card", ".avatar-wrap", ".name-plate", ".search-box",
+      ".theme-toggle", ".category-chip", ".music-cluster",
+      ".music-cluster .music-btn", ".music-cluster .music-extra"
+    ].join(", ");
+    let spotEls = [];
+    function refreshSpotTargets() {
+      spotEls = Array.prototype.slice.call(
+        document.querySelectorAll(SPOT_SELECTOR)
+      );
+    }
+
+    (function initSpotlight() {
+      // 触摸设备直接跳过（CSS 里也已隐藏高光层）
+      if (matchMedia("(hover: none)").matches) return;
+
+      refreshSpotTargets();
+
+      let tx = window.innerWidth / 2, ty = window.innerHeight / 2;  // 目标
+      let cx = tx, cy = ty;                                          // 当前
+      let rafId = null;
+      let visible = false;
+
+      function loop() {
+        // 系数 0.18 → 越靠近目标越慢，停在目标位置
+        cx += (tx - cx) * 0.18;
+        cy += (ty - cy) * 0.18;
+        // 视口坐标 → 每个元素的局部坐标
+        for (let i = 0; i < spotEls.length; i++) {
+          const el = spotEls[i];
+          const r = el.getBoundingClientRect();
+          el.style.setProperty("--sx", (cx - r.left).toFixed(1) + "px");
+          el.style.setProperty("--sy", (cy - r.top).toFixed(1) + "px");
+        }
+        // 离目标不到 0.1px 就停掉 rAF，省电
+        if (Math.abs(tx - cx) > 0.1 || Math.abs(ty - cy) > 0.1) {
+          rafId = requestAnimationFrame(loop);
+        } else {
+          rafId = null;
+        }
+      }
+
+      function startLoop() {
+        if (rafId == null) rafId = requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("mousemove", (e) => {
+        tx = e.clientX;
+        ty = e.clientY;
+        if (!visible) {
+          // 第一次进入：当前坐标直接对齐目标，避免高光从中心飞过来
+          cx = tx; cy = ty;
+          visible = true;
+          document.body.classList.add("spot-on");
+        }
+        startLoop();
+      }, { passive: true });
+
+      // 页面滚动时元素位置变了，重新对齐一次高光
+      window.addEventListener("scroll", startLoop, { passive: true });
+
+      // 鼠标离开视口 → 高光整体淡出
+      window.addEventListener("mouseout", (e) => {
+        if (!e.relatedTarget && !e.toElement) {
+          visible = false;
+          document.body.classList.remove("spot-on");
+        }
+      });
+    })();
+
+    /* ==========================================================
        启动
        ========================================================== */
     render();
@@ -1465,6 +1659,24 @@
         · 所有音频都加载失败时整个控制条自动隐藏，不影响其他功能
         · 出于浏览器自动播放策略，音乐不会自动响起，
           需要访客手动点一下中间的播放按钮
+
+    10) 鼠标跟随光源（只提亮卡片等玻璃元素，不照背景）
+        · 移动鼠标时，鼠标附近的玻璃元素（卡片 / 搜索框 /
+          分类胶囊 / 头像 / 名字牌 / 主题按钮 / 音乐控制条）
+          表面会出现柔和的蓝白色高光；背景图完全不受影响
+        · 实现细节：每个玻璃元素自带一个 ::after 高光层
+          （径向渐变），光斑画在元素内部，被元素自身的
+          圆角和边界裁剪 —— 物理上照不到元素外面
+        · JS（initSpotlight）把鼠标视口坐标换算成各元素的
+          局部坐标写进 --sx / --sy，rAF + lerp 平滑跟随
+        · 想调亮 / 调暗：改 CSS 第 10 节 radial-gradient 里的
+          rgba 透明度（浅色模式核心 0.32，暗色 0.22）
+        · 想换颜色：改渐变里的 rgb 通道，
+          例如偏暖色可以把 rgb(255,255,255) 换成 rgb(255,210,170)
+        · 想改光圈大小：改渐变里的 circle 130px（半径）
+        · 想关掉：把 CSS 第 10 节整段删掉，
+          或在 JS initSpotlight() 顶部加 return;
+        · 触摸设备 / 系统开了「减少动效」 → 自动跳过
     ================================================================
   -->
 </body>

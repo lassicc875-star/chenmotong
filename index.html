@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="陈墨瞳的个人链接收藏 —— 用液态玻璃风格整理与展示喜欢的网站" />
+  <title>陈墨瞳 · 链接收藏</title>
+
+  <!--
+    ============================================================
+      陈墨瞳个人链接收藏站 · Liquid Glass 单文件版本
+      ------------------------------------------------------------
+      · 所有 CSS / JS 内联，无构建步骤、无外部依赖
+      · 直接上传到 GitHub 仓库并开启 Pages 即可访问
+      · 文件使用相对路径，移动端 / 桌面端均做了适配
+    ============================================================
+  -->
+
+  <style>
+    /* ============================================================
+       1. 主题变量（浅色 / 深色）
+       ------------------------------------------------------------
+       切换方式：html[data-theme="dark"] 或 [data-theme="light"]
+       主题选择会持久化到 localStorage(key = "lg-theme")
+       ============================================================ */
+    :root {
+      /* 浅色模式（默认） */
+      --bg-base: #eef1fb;
+      --text-primary: #1a1b2e;
+      --text-secondary: #5a5b7a;
+      --text-muted: #8a8ca8;
+      --glass-bg: rgba(255, 255, 255, 0.35);
+      --glass-bg-strong: rgba(255, 255, 255, 0.55);
+      --glass-border: rgba(255, 255, 255, 0.6);
+      --glass-highlight: rgba(255, 255, 255, 0.85);
+      --accent: #6b8eff;
+      --accent-soft: rgba(107, 142, 255, 0.15);
+      --tag-bg: rgba(107, 142, 255, 0.18);
+      --tag-text: #3a5fcf;
+      --shadow-card: 0 8px 32px rgba(120, 140, 200, 0.18);
+      --shadow-glow: 0 0 40px rgba(150, 170, 255, 0.25);
+      --pin-color: #ff7e9d;
+    }
+
+    html[data-theme="dark"] {
+      /* 深色模式 */
+      --bg-base: #0b0c1a;
+      --text-primary: #f2f3ff;
+      --text-secondary: #b4b6d0;
+      --text-muted: #7a7d9c;
+      --glass-bg: rgba(255, 255, 255, 0.06);
+      --glass-bg-strong: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-highlight: rgba(255, 255, 255, 0.22);
+      --accent: #8aa9ff;
+      --accent-soft: rgba(138, 169, 255, 0.18);
+      --tag-bg: rgba(138, 169, 255, 0.2);
+      --tag-text: #b6c8ff;
+      --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.45);
+      --shadow-glow: 0 0 40px rgba(120, 150, 255, 0.18);
+      --pin-color: #ffadc4;
+    }
+
+    /* ============================================================
+       2. 基础重置
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+        Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+      background: var(--bg-base);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      transition: background-color 0.6s ease, color 0.6s ease;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+    /* ============================================================
+       3. 背景图（用户上传的 JPG 重度模糊后作为颜色载体）
+       ------------------------------------------------------------
+       · position: fixed 不随滚动而移动
+       · filter: blur() saturate() 让图片变成柔和的色彩背景
+       · transform: scale(1.1) 防止模糊边缘出现白边
+       · z-index: -3 位于最底层
+       · 想换图？直接把同名文件覆盖 bg.jpg 即可，
+         或把 src 改成新文件名
+       ============================================================ */
+    .bg-image {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      pointer-events: none;
+      background-image: url("bg.jpg");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      filter: blur(45px) saturate(135%) brightness(1.02);
+      transform: scale(1.15);   /* 放大 15%，避免 blur 后的边缘透出来 */
+      will-change: transform;
+      transition: filter 0.6s ease;
+    }
+    html[data-theme="dark"] .bg-image {
+      filter: blur(50px) saturate(120%) brightness(0.55);
+    }
+
+    /* ============================================================
+       4. 背景柔光斑（让玻璃质感更明显）
+       ------------------------------------------------------------
+       在背景图之上叠几层高斯模糊的彩色光斑，
+       给玻璃表面提供更丰富的色彩环境（visionOS 风格的关键）。
+       ============================================================ */
+    .bg-blobs {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.3;                 /* 背景图为主，光斑只是点缀 */
+      will-change: transform;
+      animation: blob-float 22s ease-in-out infinite;
+    }
+    .blob-1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, #ffb3d4 0%, #ffb3d4 35%, transparent 70%);
+      top: -160px; left: -120px;
+    }
+    .blob-2 {
+      width: 620px; height: 620px;
+      background: radial-gradient(circle, #b0caff 0%, #b0caff 35%, transparent 70%);
+      top: 30%; right: -180px;
+      animation-delay: -6s;
+    }
+    .blob-3 {
+      width: 480px; height: 480px;
+      background: radial-gradient(circle, #d4b8ff 0%, #d4b8ff 35%, transparent 70%);
+      bottom: -160px; left: 25%;
+      animation-delay: -12s;
+    }
+    .blob-4 {
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, #b8f0e0 0%, #b8f0e0 35%, transparent 70%);
+      top: 60%; left: -80px;
+      animation-delay: -18s;
+    }
+    @keyframes blob-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(60px, -40px) scale(1.1); }
+      66%      { transform: translate(-40px, 50px) scale(0.95); }
+    }
+
+    html[data-theme="dark"] .blob { opacity: 0.45; }
+    html[data-theme="dark"] .blob-1 { background: radial-gradient(circle, #5b3a8a 0%, #5b3a8a 35%, transparent 70%); }
+    html[data-theme="dark"] .blob-2 { background: radial-gradient(circle, #1f3a8a 0%, #1f3a8a 35%, transparent 70%); }
+    html[data-theme="dark"] .blob-3 { background: radial-gradient(circle, #6b2a8a 0%, #6b2a8a 35%, transparent 70%); }
+    html[data-theme="dark"] .blob-4 { background: radial-gradient(circle, #1a5a5a 0%, #1a5a5a 35%, transparent 70%); }
+
+    /* ============================================================
+       4. 通用「液态玻璃」工具类
+       ------------------------------------------------------------
+       关键属性：
+         · backdrop-filter: blur(20px) saturate(180%)
+         · 半透明 background
+         · 1px 渐变 / 半透明白色 border → 边缘反光感
+         · 内外 box-shadow → 立体悬浮感
+       ============================================================ */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 8px 32px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      border-radius: 20px;
+    }
+
+    /* ============================================================
+       5. 容器布局
+       ============================================================ */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ============================================================
+       6. 个人资料区（头像 + 名字）
+       ============================================================ */
+    .profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .avatar-wrap {
+      width: 128px;
+      height: 128px;
+      border-radius: 50%;
+      padding: 4px;                 /* 给外圈玻璃环留出空间 */
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1.5px solid var(--glass-border);
+      box-shadow:
+        0 10px 36px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .avatar-wrap:hover {
+      transform: translateY(-4px) scale(1.03);
+      box-shadow:
+        0 16px 48px var(--shadow-card),
+        0 0 60px var(--accent-soft),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    .avatar-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+    }
+    .avatar-inner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .avatar-fallback {
+      font-size: 52px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: var(--text-primary);
+      user-select: none;
+    }
+
+    .name-plate {
+      padding: 12px 36px;
+      border-radius: 999px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 6px 28px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: 4px;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .name-plate:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 10px 36px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    /* ============================================================
+       7. 控制条：搜索 + 主题切换
+       ============================================================ */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 6px 24px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .search-box:focus-within {
+      box-shadow:
+        0 8px 28px var(--shadow-card),
+        0 0 0 2px var(--accent-soft),
+        inset 0 1px 0 var(--glass-highlight);
+      border-color: var(--accent);
+    }
+    .search-box svg {
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+    .search-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 15px;
+      color: var(--text-primary);
+      font-family: inherit;
+    }
+    .search-box input::placeholder { color: var(--text-muted); }
+
+    .theme-toggle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 6px 24px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      color: var(--text-primary);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .theme-toggle:hover {
+      transform: translateY(-2px) rotate(15deg);
+      box-shadow:
+        0 10px 30px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    /* ============================================================
+       8. 分类筛选胶囊
+       ============================================================ */
+    .category-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 36px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .category-chip {
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      box-shadow:
+        0 4px 16px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      transition: transform 0.25s ease, color 0.25s ease,
+                  background 0.25s ease, box-shadow 0.25s ease;
+    }
+    .category-chip:hover {
+      transform: translateY(-2px);
+      color: var(--text-primary);
+      box-shadow:
+        0 8px 24px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+    .category-chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow:
+        0 6px 20px var(--shadow-card),
+        0 0 20px var(--accent-soft),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    /* ============================================================
+       9. 链接卡片网格
+       ============================================================ */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .link-card {
+      position: relative;
+      padding: 20px;
+      border-radius: 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 8px 32px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+                  box-shadow 0.4s ease,
+                  border-color 0.4s ease;
+    }
+
+    /* 顶部高光条（玻璃边缘反光） */
+    .link-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--glass-highlight) 50%,
+        transparent
+      );
+      opacity: 0.7;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .link-card:hover {
+      transform: translateY(-6px) scale(1.015);
+      border-color: var(--accent);
+      box-shadow:
+        0 18px 48px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+    .link-card:hover::before {
+      opacity: 1;
+      transform: translateY(2px);
+    }
+
+    .link-card.pinned {
+      border-color: var(--pin-color);
+      box-shadow:
+        0 8px 32px var(--shadow-card),
+        0 0 24px rgba(255, 126, 157, 0.18),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .pin-btn {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass-bg-strong);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      transition: all 0.25s ease;
+    }
+    .pin-btn:hover {
+      color: var(--pin-color);
+      transform: scale(1.1);
+    }
+    .pin-btn.pinned {
+      color: var(--pin-color);
+      background: rgba(255, 126, 157, 0.15);
+    }
+    .pin-btn svg { transition: transform 0.25s ease; }
+    .pin-btn:active svg { transform: scale(0.85); }
+
+    .card-desc {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .card-date {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       10. 空状态 & 统计
+       ============================================================ */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    .stats {
+      text-align: center;
+      margin-top: 16px;
+      margin-bottom: 24px;
+      color: var(--text-muted);
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    /* ============================================================
+       11. 响应式 · 移动端
+       ============================================================ */
+    @media (max-width: 640px) {
+      .container { padding: 32px 16px 60px; }
+      .profile { gap: 18px; margin-bottom: 32px; }
+      .avatar-wrap { width: 100px; height: 100px; }
+      .avatar-fallback { font-size: 42px; }
+      .name-plate { font-size: 20px; padding: 10px 28px; letter-spacing: 3px; }
+
+      /* 移动端降低模糊强度，保性能 */
+      .search-box,
+      .category-chip,
+      .theme-toggle,
+      .link-card,
+      .avatar-wrap,
+      .name-plate {
+        backdrop-filter: blur(12px) saturate(160%);
+        -webkit-backdrop-filter: blur(12px) saturate(160%);
+      }
+    }
+
+    /* ============================================================
+       12. 入场动画
+       ============================================================ */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .link-card,
+    .category-chip,
+    .search-box,
+    .theme-toggle,
+    .avatar-wrap,
+    .name-plate {
+      animation: fade-up 0.6s ease both;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ============================================================
+       背景层（图片 + 柔光斑）
+       ------------------------------------------------------------
+       · .bg-image  你上传的背景图（重度模糊后作为颜色载体）
+       · .bg-blobs  在图片之上的彩色光斑，强化玻璃质感的色彩环境
+       ============================================================ -->
+  <div class="bg-image" aria-hidden="true"></div>
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
+  <!-- ============================================================
+       主容器
+       ============================================================ -->
+  <main class="container">
+
+    <!-- ===== 个人资料区 ===== -->
+    <section class="profile" aria-label="个人资料">
+      <!-- 头像：
+           · 加载 avatar.jpg（同目录）
+           · 失败时由 JS 把 display 切到 .avatar-fallback（显示「陈」字） -->
+      <div class="avatar-wrap">
+        <div class="avatar-inner">
+          <img
+            id="avatar"
+            src="avatar.jpg"
+            alt="陈墨瞳的头像"
+            onerror="this.style.display='none'; document.getElementById('avatar-fallback').style.display='flex';"
+          />
+          <!-- 占位：默认隐藏，加载失败时由上面 onerror 触发显示 -->
+          <div id="avatar-fallback" class="avatar-fallback" style="display:none;">陈</div>
+        </div>
+      </div>
+
+      <!-- 名字（液态玻璃风格容器包裹） -->
+      <h1 class="name-plate">陈墨瞳</h1>
+    </section>
+
+    <!-- ===== 控制条：搜索 + 主题切换 ===== -->
+    <div class="controls">
+      <label class="search-box" for="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="search" type="search" placeholder="搜索链接、描述、标签…" autocomplete="off" />
+      </label>
+      <button id="themeToggle" class="theme-toggle" aria-label="切换主题" title="切换主题">
+        <!-- 图标由 JS 根据主题切换填充 -->
+        <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <line x1="12" y1="2" x2="12" y2="4"/>
+          <line x1="12" y1="20" x2="12" y2="22"/>
+          <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/>
+          <line x1="2" y1="12" x2="4" y2="12"/>
+          <line x1="20" y1="12" x2="22" y2="12"/>
+          <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/>
+          <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ===== 分类筛选 ===== -->
+    <nav class="category-bar" id="categoryBar" aria-label="分类筛选"></nav>
+
+    <!-- ===== 统计 + 链接卡片网格 ===== -->
+    <div class="stats" id="stats"></div>
+    <div class="grid" id="grid"></div>
+
+  </main>
+
+  <!-- ============================================================
+       数据区
+       ------------------------------------------------------------
+       每条链接字段说明：
+         id          唯一标识（用 slug 字符串，便于 localStorage 持久化）
+         title       卡片标题
+         url         链接地址
+         description 一句话描述（建议 30 字以内，移动端会截 3 行）
+         category    分类名（与下方「自定义分类顺序」配合使用）
+         tags        标签数组（用于搜索匹配）
+         pinned      是否默认置顶（用户后续切换会保存到 localStorage）
+         createdAt   添加日期 YYYY-MM-DD
+       ============================================================ -->
+  <script>
+    // ----------------------------------------------------------
+    // 链接数据 —— 在这里直接增删 / 修改
+    // ----------------------------------------------------------
+    const LINKS = [
+      {
+        // 注意：该资源指向外部托管地址，不上传到本仓库，仅作外链展示。
+        // 涉及第三方版权的风险由用户自行评估。
+        id: "pixel-naruto-next-1-40",
+        title: "像素火影次世代 v1.40",
+        url: "https://png.xrvi.top/file/1789205031273_%E5%83%8F%E7%B4%A0%E7%81%AB%E5%BD%B1%E6%AC%A1%E4%B8%96%E4%BB%A31.40.zip",
+        description: "粉丝自制火影忍者像素动作游戏（外部下载链接，不通过 GitHub Pages 托管）。",
+        category: "下载资源",
+        tags: ["游戏", "像素", "火影", "下载"],
+        pinned: false,
+        createdAt: "2026-09-12"
+      },
+      {
+        id: "github",
+        title: "GitHub",
+        url: "https://github.com",
+        description: "全球最大的代码托管与协作平台，开源项目的集散地。",
+        category: "开发工具",
+        tags: ["代码", "开源", "协作"],
+        pinned: true,
+        createdAt: "2026-01-05"
+      },
+      {
+        id: "mdn",
+        title: "MDN Web Docs",
+        url: "https://developer.mozilla.org",
+        description: "Web 技术的权威文档，HTML / CSS / JS 必查。",
+        category: "开发工具",
+        tags: ["文档", "前端", "Web"],
+        pinned: true,
+        createdAt: "2026-01-08"
+      },
+      {
+        id: "codepen",
+        title: "CodePen",
+        url: "https://codepen.io",
+        description: "前端在线编辑器，写 demo / 看创意的好地方。",
+        category: "开发工具",
+        tags: ["前端", "Demo", "灵感"],
+        pinned: false,
+        createdAt: "2026-01-12"
+      },
+      {
+        id: "stackoverflow",
+        title: "Stack Overflow",
+        url: "https://stackoverflow.com",
+        description: "程序员的问答社区，90% 的 bug 都能在这里找到解法。",
+        category: "开发工具",
+        tags: ["问答", "编程", "社区"],
+        pinned: false,
+        createdAt: "2026-01-20"
+      },
+      {
+        id: "juejin",
+        title: "掘金",
+        url: "https://juejin.cn",
+        description: "国内高质量技术社区，紧跟前端 / AI / 移动端趋势。",
+        category: "学习资源",
+        tags: ["技术", "社区", "中文"],
+        pinned: true,
+        createdAt: "2026-02-02"
+      },
+      {
+        id: "ruanyifeng",
+        title: "阮一峰的网络日志",
+        url: "https://www.ruanyifeng.com",
+        description: "通俗易懂的技术随笔，每周一篇，适合碎片时间阅读。",
+        category: "学习资源",
+        tags: ["博客", "教程", "中文"],
+        pinned: false,
+        createdAt: "2026-02-10"
+      },
+      {
+        id: "csdn",
+        title: "CSDN",
+        url: "https://www.csdn.net",
+        description: "国内老牌技术社区，资料齐全但需甄别质量。",
+        category: "学习资源",
+        tags: ["技术", "中文", "社区"],
+        pinned: false,
+        createdAt: "2026-02-15"
+      },
+      {
+        id: "dribbble",
+        title: "Dribbble",
+        url: "https://dribbble.com",
+        description: "全球设计师作品社区，灵感源泉。",
+        category: "设计灵感",
+        tags: ["设计", "灵感", "UI"],
+        pinned: false,
+        createdAt: "2026-02-22"
+      },
+      {
+        id: "behance",
+        title: "Behance",
+        url: "https://www.behance.net",
+        description: "Adobe 出品的设计作品展示平台，案例质量很高。",
+        category: "设计灵感",
+        tags: ["设计", "案例", "作品集"],
+        pinned: false,
+        createdAt: "2026-02-28"
+      },
+      {
+        id: "apple-design",
+        title: "Apple Design Resources",
+        url: "https://developer.apple.com/design/resources/",
+        description: "苹果官方设计资源，含模板、字体、图标。",
+        category: "设计灵感",
+        tags: ["苹果", "设计", "资源"],
+        pinned: false,
+        createdAt: "2026-03-05"
+      },
+      {
+        id: "zhihu",
+        title: "知乎",
+        url: "https://www.zhihu.com",
+        description: "问答与想法社区，偶尔能挖到不错的长文。",
+        category: "生活",
+        tags: ["问答", "中文", "杂学"],
+        pinned: false,
+        createdAt: "2026-03-12"
+      },
+      {
+        id: "bilibili",
+        title: "Bilibili",
+        url: "https://www.bilibili.com",
+        description: "视频分享平台，技术 / 纪录片 / 学习类内容丰富。",
+        category: "生活",
+        tags: ["视频", "学习", "娱乐"],
+        pinned: false,
+        createdAt: "2026-03-18"
+      }
+    ];
+
+    // ----------------------------------------------------------
+    // 自定义分类顺序
+    //   · 想新增分类？直接在 LINKS 里用新分类名即可
+    //   · 想调整分类显示顺序？在这里按顺序写即可
+    // ----------------------------------------------------------
+    const CATEGORY_ORDER = ["全部", "下载资源", "开发工具", "学习资源", "设计灵感", "生活"];
+
+    /* ==========================================================
+       持久化
+       ----------------------------------------------------------
+       存什么：
+         · 主题：lg-theme = "light" | "dark"
+         · 置顶覆盖：lg-pin-overrides = { id: true/false }
+           —— 用户切换置顶时，把当前状态写到这里，避免改 LINKS
+       ========================================================== */
+    const STORAGE_KEYS = {
+      theme: "lg-theme",
+      pinOverrides: "lg-pin-overrides"
+    };
+
+    function loadTheme() {
+      const saved = localStorage.getItem(STORAGE_KEYS.theme);
+      if (saved === "light" || saved === "dark") return saved;
+      // 没存过：跟随系统
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    function saveTheme(t) { localStorage.setItem(STORAGE_KEYS.theme, t); }
+
+    function loadPinOverrides() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEYS.pinOverrides) || "{}");
+      } catch (_) { return {}; }
+    }
+    function savePinOverrides(o) {
+      localStorage.setItem(STORAGE_KEYS.pinOverrides, JSON.stringify(o));
+    }
+
+    /* ==========================================================
+       状态
+       ========================================================== */
+    const state = {
+      theme: loadTheme(),
+      category: "全部",
+      keyword: "",
+      pinOverrides: loadPinOverrides()   // { [id]: true/false }
+    };
+
+    // 把置顶覆盖合并到当前数据上
+    function isPinned(link) {
+      if (state.pinOverrides[link.id] !== undefined) return state.pinOverrides[link.id];
+      return !!link.pinned;
+    }
+
+    function togglePin(id) {
+      const link = LINKS.find(l => l.id === id);
+      if (!link) return;
+      const newVal = !isPinned(link);
+      state.pinOverrides[id] = newVal;
+      savePinOverrides(state.pinOverrides);
+      render();
+    }
+
+    /* ==========================================================
+       主题切换
+       ========================================================== */
+    function applyTheme() {
+      document.documentElement.setAttribute("data-theme", state.theme);
+      const icon = document.getElementById("themeIcon");
+      // 简单切换图标：暗色 → 月亮，亮色 → 太阳
+      if (state.theme === "dark") {
+        icon.innerHTML = `
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        `;
+        icon.setAttribute("fill", "currentColor");
+      } else {
+        icon.innerHTML = `
+          <circle cx="12" cy="12" r="4"/>
+          <line x1="12" y1="2" x2="12" y2="4"/>
+          <line x1="12" y1="20" x2="12" y2="22"/>
+          <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/>
+          <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/>
+          <line x1="2" y1="12" x2="4" y2="12"/>
+          <line x1="20" y1="12" x2="22" y2="12"/>
+          <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/>
+          <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
+        `;
+        icon.setAttribute("fill", "none");
+      }
+    }
+
+    /* ==========================================================
+       过滤 + 排序
+       ----------------------------------------------------------
+       · 当前分类
+       · 关键词（标题 / 描述 / 分类 / 标签）
+       · 置顶项始终排在最前
+       ========================================================== */
+    function getFiltered() {
+      const kw = state.keyword.trim().toLowerCase();
+      return LINKS
+        .filter(link => {
+          if (state.category !== "全部" && link.category !== state.category) return false;
+          if (!kw) return true;
+          const haystack = [
+            link.title,
+            link.description,
+            link.category,
+            ...(link.tags || [])
+          ].join(" ").toLowerCase();
+          return haystack.includes(kw);
+        })
+        .sort((a, b) => {
+          const pa = isPinned(a) ? 1 : 0;
+          const pb = isPinned(b) ? 1 : 0;
+          if (pa !== pb) return pb - pa;            // 置顶在前
+          return (b.createdAt || "").localeCompare(a.createdAt || ""); // 新加的在前
+        });
+    }
+
+    function uniqCategories() {
+      const set = new Set(LINKS.map(l => l.category));
+      // 按 CATEGORY_ORDER 排序，「全部」始终在第一位
+      return ["全部", ...CATEGORY_ORDER.filter(c => c !== "全部" && set.has(c))];
+    }
+
+    /* ==========================================================
+       渲染：分类条 + 卡片网格 + 统计
+       ========================================================== */
+    function renderCategoryBar() {
+      const bar = document.getElementById("categoryBar");
+      const cats = uniqCategories();
+      bar.innerHTML = cats.map(cat => `
+        <button class="category-chip ${cat === state.category ? "active" : ""}"
+                data-cat="${cat}">${cat}</button>
+      `).join("");
+      bar.querySelectorAll(".category-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.category = btn.dataset.cat;
+          render();
+        });
+      });
+    }
+
+    function escapeHTML(s) {
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function renderCards() {
+      const list = getFiltered();
+      const grid = document.getElementById("grid");
+      const stats = document.getElementById("stats");
+
+      stats.textContent =
+        list.length === 0
+          ? ""
+          : `共 ${list.length} 个链接 · ${list.filter(isPinned).length} 个已置顶`;
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div class="empty">没有匹配的链接，换个关键词试试 ✦</div>`;
+        return;
+      }
+
+      grid.innerHTML = list.map((link, idx) => `
+        <article class="link-card ${isPinned(link) ? "pinned" : ""}"
+                 data-url="${escapeHTML(link.url)}"
+                 data-id="${escapeHTML(link.id)}"
+                 style="animation-delay:${Math.min(idx, 12) * 40}ms"
+                 tabindex="0"
+                 role="link"
+                 aria-label="${escapeHTML(link.title)}">
+
+          <div class="card-top">
+            <h3 class="card-title">${escapeHTML(link.title)}</h3>
+            <button class="pin-btn ${isPinned(link) ? "pinned" : ""}"
+                    data-pin="${escapeHTML(link.id)}"
+                    aria-label="置顶"
+                    title="${isPinned(link) ? "取消置顶" : "置顶"}">
+              ${
+                isPinned(link)
+                  ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 14.39 8.26 21 9.27l-5 4.87L17.18 21 12 17.77 6.82 21 8 14.14l-5-4.87 6.61-1.01L12 2z"/></svg>`
+                  : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 14.39 8.26 21 9.27 17 14.14 18.18 21 12 17.77 5.82 21 7 14.14 3 9.27 9.61 8.26 12 2"/></svg>`
+              }
+            </button>
+          </div>
+
+          <p class="card-desc">${escapeHTML(link.description || "")}</p>
+
+          <div class="card-meta">
+            <span class="tag">${escapeHTML(link.category)}</span>
+            <span class="card-date">${escapeHTML(link.createdAt || "")}</span>
+          </div>
+        </article>
+      `).join("");
+
+      // 卡片整体点击 → 新标签页打开（pin 按钮要阻止冒泡）
+      grid.querySelectorAll(".link-card").forEach(card => {
+        card.addEventListener("click", e => {
+          if (e.target.closest(".pin-btn")) return;
+          window.open(card.dataset.url, "_blank", "noopener,noreferrer");
+        });
+        // 键盘可达
+        card.addEventListener("keydown", e => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            window.open(card.dataset.url, "_blank", "noopener,noreferrer");
+          }
+        });
+      });
+
+      // 置顶按钮
+      grid.querySelectorAll(".pin-btn").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.stopPropagation();
+          togglePin(btn.dataset.pin);
+        });
+      });
+    }
+
+    function render() {
+      applyTheme();
+      renderCategoryBar();
+      renderCards();
+    }
+
+    /* ==========================================================
+       事件绑定
+       ========================================================== */
+    document.getElementById("themeToggle").addEventListener("click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      saveTheme(state.theme);
+      applyTheme();
+    });
+
+    document.getElementById("search").addEventListener("input", e => {
+      state.keyword = e.target.value;
+      renderCards();
+    });
+
+    // 跟随系统主题变化（仅当用户没手动选过时启用 —— 这里简化处理：每次变化也跟随刷新）
+    window.matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", e => {
+        if (!localStorage.getItem(STORAGE_KEYS.theme)) {
+          state.theme = e.matches ? "dark" : "light";
+          applyTheme();
+        }
+      });
+
+    /* ==========================================================
+       启动
+       ========================================================== */
+    render();
+  </script>
+
+  <!--
+    ================================================================
+     使用说明
+    ================================================================
+     1) 添加 / 修改链接
+        打开 index.html，找到 <script> 内 const LINKS = [ ... ] 数组。
+        按现有格式新增一项即可，例如：
+        {
+          id: "my-new-site",
+          title: "我的新网站",
+          url: "https://example.com",
+          description: "一句话描述",
+          category: "开发工具",          // 可填已有分类或新分类名
+          tags: ["标签1", "标签2"],
+          pinned: false,                // 是否默认置顶
+          createdAt: "2026-09-12"        // 添加日期 YYYY-MM-DD
+        }
+        · id 必须唯一，建议用英文短横线 slug
+        · category 写新名字会自动出现在筛选条上
+
+     2) 修改分类顺序
+        找到 const CATEGORY_ORDER = [ ... ]，按你想要的顺序写分类名。
+        「全部」一项会自动在第一位。
+
+     3) 更换头像
+        把头像图片放到和 index.html 同一个目录，命名为 avatar.jpg 即可。
+        支持 .jpg / .png / .webp —— 如果文件名不是 avatar.jpg，请把
+        <img id="avatar" src="avatar.jpg" ...> 里的 src 改成实际文件名。
+        加载失败时会自动显示名字首字「陈」的玻璃圆形占位。
+
+     4) 替换背景图
+        · 把新图片放到项目根目录，命名为 bg.jpg 即可（同名覆盖）
+        · 想换成 png / webp：在 CSS 里修改 .bg-image 的
+          background-image: url("bg.jpg"); 改成新文件名
+        · 想换调性：调整 .bg-image 的 filter 参数，常用项：
+            blur(30~60px)   越大越朦胧（推荐 45px）
+            saturate(80~160%) 越大越鲜艳
+            brightness(0.4~1.2) 越小越深邃（深色模式推荐 0.55）
+        · 加载失败时，柔光斑会自动顶上做兜底
+
+     5) 部署到 GitHub Pages
+        · 新建一个 GitHub 仓库，例如 oceanChen/links
+        · 把 index.html（和 avatar.jpg / bg.jpg）一起上传到根目录
+        · 仓库 → Settings → Pages → Source 选 main 分支 /(root) → Save
+        · 几分钟后访问 https://<你的用户名>.github.io/links/ 即可
+        ·
+        · 自定义域名（可选）：在 Pages 设置里填 Custom domain，按提示配 DNS
+
+     6) 本地预览
+        直接双击 index.html 即可在浏览器打开，无需服务器。
+
+     7) 清空本地点亮状态
+        在浏览器 DevTools Console 执行：
+          localStorage.clear(); location.reload();
+        可以重置主题和置顶记录。
+
+     8) 想换字体？
+        打开 <style> 里 body 的 font-family，按需加 Web 字体，
+        或换成 "Noto Serif SC" / "LXGW WenKai" 等。
+    ================================================================
+  -->
+</body>
+</html>

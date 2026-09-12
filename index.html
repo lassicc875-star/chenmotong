@@ -599,6 +599,98 @@
     .name-plate {
       animation: fade-up 0.6s ease both;
     }
+
+    /* ============================================================
+       13. 背景音乐按钮（液态玻璃浮动球）
+       ------------------------------------------------------------
+       · 固定在右下角，点击 播放 / 暂停
+       · 暂停时显示音符图标，播放时变成跳动的均衡器条
+       · 播放列表所有音频都加载失败时由 JS 自动隐藏整个按钮
+       ============================================================ */
+    .music-btn {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        0 8px 32px var(--shadow-card),
+        inset 0 1px 0 var(--glass-highlight);
+      color: var(--text-primary);
+      cursor: pointer;
+      z-index: 100;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .music-btn:hover {
+      transform: translateY(-3px) scale(1.06);
+      border-color: var(--accent);
+      box-shadow:
+        0 14px 40px var(--shadow-card),
+        var(--shadow-glow),
+        inset 0 1px 0 var(--glass-highlight);
+    }
+
+    /* 播放中：外圈呼吸光环 */
+    .music-btn.playing::before {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent);
+      animation: music-ring 2s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes music-ring {
+      0%   { transform: scale(1);    opacity: 0.7; }
+      100% { transform: scale(1.4);  opacity: 0; }
+    }
+
+    /* 音符图标（暂停时显示） */
+    .music-btn .icon-note { display: block; }
+    .music-btn.playing .icon-note { display: none; }
+
+    /* 均衡器条（播放时显示） */
+    .music-btn .eq {
+      display: none;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+    }
+    .music-btn.playing .eq { display: flex; }
+    .eq i {
+      display: block;
+      width: 3px;
+      height: 6px;
+      border-radius: 2px;
+      background: var(--accent);
+      animation: eq-bounce 0.9s ease-in-out infinite;
+    }
+    .eq i:nth-child(2) { animation-delay: 0.25s; }
+    .eq i:nth-child(3) { animation-delay: 0.5s; }
+    @keyframes eq-bounce {
+      0%, 100% { height: 5px; }
+      50%      { height: 18px; }
+    }
+
+    /* 移动端：缩小并贴近边缘 */
+    @media (max-width: 640px) {
+      .music-btn {
+        right: 16px;
+        bottom: 16px;
+        width: 48px;
+        height: 48px;
+        backdrop-filter: blur(12px) saturate(160%);
+        -webkit-backdrop-filter: blur(12px) saturate(160%);
+      }
+    }
   </style>
 </head>
 
@@ -679,6 +771,31 @@
     <div class="grid" id="grid"></div>
 
   </main>
+
+  <!-- ============================================================
+       背景音乐（播放列表模式）
+       ------------------------------------------------------------
+       · 曲目在下方 script 标签里的 BGM_PLAYLIST 数组中管理
+       · 音频文件放在和 index.html 同目录（当前：bgm-1.mp3 / bgm-2.mp3）
+       · 一首播完自动切下一首，列表循环
+       · 某一首加载失败会自动跳过；全部失败 → 按钮隐藏
+       · 浏览器策略要求用户点击后才能出声，所以不会自动播放
+       ============================================================ -->
+  <audio id="bgm" preload="metadata"></audio>
+
+  <button id="musicBtn" class="music-btn"
+          aria-label="播放 / 暂停背景音乐"
+          title="播放背景音乐">
+    <!-- 暂停状态：音符图标 -->
+    <svg class="icon-note" width="22" height="22" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+    </svg>
+    <!-- 播放状态：跳动均衡器 -->
+    <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+  </button>
 
   <!-- ============================================================
        数据区
@@ -1082,6 +1199,78 @@
       });
 
     /* ==========================================================
+       背景音乐（播放列表）
+       ----------------------------------------------------------
+       · BGM_PLAYLIST：想加歌 / 删歌 / 调顺序，改这个数组就行
+         （文件名建议用英文数字，避免路径编码问题）
+       · 点击按钮：切换 播放 / 暂停
+       · 一首播完（ended）自动切下一首，列表循环
+       · 某一首加载失败自动跳过；全部失败 → 隐藏按钮
+       · play() 返回 Promise，本地 file:// 打开时用它做兜底
+       ========================================================== */
+    const BGM_PLAYLIST = [
+      { src: "bgm-1.mp3", title: "石膏 · 椎名林檎" },
+      { src: "bgm-2.mp3", title: "Glassy Sky · Donna Burke" }
+    ];
+
+    const bgm = document.getElementById("bgm");
+    const musicBtn = document.getElementById("musicBtn");
+    let trackIndex = 0;      // 当前曲目下标（从 0 开始）
+    let failedCount = 0;     // 连续加载失败数（全部失败才隐藏按钮）
+    let wantPlay = false;    // 用户是否处于「想听」状态（用于失败后自动试下一首）
+
+    function loadTrack(i) {
+      bgm.src = BGM_PLAYLIST[i].src;
+      musicBtn.title = "播放：" + BGM_PLAYLIST[i].title;
+      musicBtn.setAttribute("aria-label", musicBtn.title);
+    }
+
+    function hideMusicBtn() {
+      musicBtn.style.display = "none";
+    }
+
+    // 启动时先装载第一首（preload=metadata 会探测文件是否存在）
+    loadTrack(trackIndex);
+
+    // 当前曲目加载失败 → 尝试下一首；全都失败才隐藏按钮
+    bgm.addEventListener("error", () => {
+      failedCount += 1;
+      if (failedCount >= BGM_PLAYLIST.length) { hideMusicBtn(); return; }
+      trackIndex = (trackIndex + 1) % BGM_PLAYLIST.length;
+      loadTrack(trackIndex);
+      if (wantPlay) bgm.play().catch(() => {});
+    });
+
+    // 成功开始播放 → 清零失败计数
+    bgm.addEventListener("playing", () => { failedCount = 0; });
+
+    // 一首播完 → 自动切下一首（列表循环）
+    bgm.addEventListener("ended", () => {
+      trackIndex = (trackIndex + 1) % BGM_PLAYLIST.length;
+      loadTrack(trackIndex);
+      bgm.play().catch(() => {});
+    });
+
+    musicBtn.addEventListener("click", () => {
+      if (bgm.paused) {
+        wantPlay = true;
+        bgm.play()
+          .then(() => {
+            musicBtn.classList.add("playing");
+            musicBtn.title = "暂停：" + BGM_PLAYLIST[trackIndex].title;
+            musicBtn.setAttribute("aria-label", musicBtn.title);
+          })
+          .catch(hideMusicBtn);   // 兜底：file:// 下 metadata 未报错的场景
+      } else {
+        wantPlay = false;
+        bgm.pause();
+        musicBtn.classList.remove("playing");
+        musicBtn.title = "播放：" + BGM_PLAYLIST[trackIndex].title;
+        musicBtn.setAttribute("aria-label", musicBtn.title);
+      }
+    });
+
+    /* ==========================================================
        启动
        ========================================================== */
     render();
@@ -1129,7 +1318,7 @@
 
      5) 部署到 GitHub Pages
         · 新建一个 GitHub 仓库，例如 oceanChen/links
-        · 把 index.html（和 avatar.jpg / bg.jpg）一起上传到根目录
+        · 把 index.html（和 avatar.jpg / bg.jpg / bgm-1.mp3 / bgm-2.mp3）一起上传到根目录
         · 仓库 → Settings → Pages → Source 选 main 分支 /(root) → Save
         · 几分钟后访问 https://<你的用户名>.github.io/links/ 即可
         ·
@@ -1146,6 +1335,20 @@
      8) 想换字体？
         打开 <style> 里 body 的 font-family，按需加 Web 字体，
         或换成 "Noto Serif SC" / "LXGW WenKai" 等。
+
+     9) 添加 / 管理背景音乐（播放列表模式）
+        · 音频文件放在项目根目录（当前：bgm-1.mp3 / bgm-2.mp3）
+        · 想加歌：把音频文件放进目录，然后在 <script> 里的
+          BGM_PLAYLIST 数组中照格式加一行：
+            { src: "bgm-3.mp3", title: "歌名 · 歌手" },
+        · 想删歌 / 换顺序：直接改 BGM_PLAYLIST 数组即可
+        · 一首播完自动切下一首，列表循环播放
+        · 页面右下角的玻璃按钮：点击 播放 / 暂停，
+          鼠标悬停可看到当前曲名
+        · 播放中按钮变成跳动的均衡器条，外圈有呼吸光环
+        · 所有音频都加载失败时按钮自动隐藏，不影响其他功能
+        · 出于浏览器自动播放策略，音乐不会自动响起，
+          需要访客手动点一下按钮
     ================================================================
   -->
 </body>
